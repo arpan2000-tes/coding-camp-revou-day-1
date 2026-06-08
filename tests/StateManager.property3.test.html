@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Test — Invalid Actions Are Silently Ignored</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 780px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    h1 { color: #38bdf8; margin-bottom: 4px; }
+    .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 28px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .badge-info  { background: #1e40af; color: #bfdbfe; }
+    .badge-pass  { background: #14532d; color: #86efac; }
+    .badge-fail  { background: #7f1d1d; color: #fca5a5; }
+    .badge-run   { background: #78350f; color: #fde68a; }
+
+    .card {
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      background: #1e293b;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 1rem; color: #f1f5f9; }
+    .card .meta { font-size: 0.8rem; color: #64748b; margin-bottom: 12px; }
+    .result-line {
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .result-pass { background: #052e16; color: #86efac; border-left: 3px solid #22c55e; }
+    .result-fail { background: #450a0a; color: #fca5a5; border-left: 3px solid #ef4444; }
+    .result-info { background: #172554; color: #93c5fd; border-left: 3px solid #3b82f6; }
+
+    #summary {
+      font-size: 1.05rem;
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 28px;
+      font-weight: 600;
+    }
+    #summary.pending { background: #1c1917; color: #d6d3d1; border: 1px solid #44403c; }
+    #summary.running { background: #1c1400; color: #fde68a; border: 1px solid #78350f; }
+    #summary.all-pass { background: #052e16; color: #86efac; border: 1px solid #166534; }
+    #summary.has-fail { background: #450a0a; color: #fca5a5; border: 1px solid #991b1b; }
+
+    pre { margin: 0; }
+    button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      background: #0ea5e9;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #38bdf8; }
+    button:disabled { background: #334155; color: #64748b; cursor: default; }
+  </style>
+</head>
+<body>
+  <h1>🎣 Property Test</h1>
+  <p class="subtitle">
+    <span class="badge badge-info">Property 3</span>
+    Invalid Actions Are Silently Ignored &nbsp;·&nbsp;
+    <span class="badge badge-info">Validates: Req 2.5, 4.8</span>
+  </p>
+
+  <div id="summary" class="pending">⏳ Ready — click "Run Tests" to start.</div>
+
+  <button id="btn-run" onclick="runTests()">▶ Run Tests</button>
+
+  <div id="results" style="margin-top:24px;"></div>
+
+  <!-- fast-check UMD bundle — exposes global `fc` -->
+  <script src="https://cdn.jsdelivr.net/npm/fast-check/lib/bundle/fast-check.min.js"></script>
+
+  <script type="module">
+    // ── Import the module under test ─────────────────────────────────────────
+    import State_Manager from '../js/State_Manager.js';
+
+    // Expose to the inline onclick handler (module scope is private)
+    window.__smTest = { State_Manager };
+  </script>
+
+  <script>
+    // ── Tiny test-result renderer ─────────────────────────────────────────────
+    const resultsEl = document.getElementById('results');
+    const summaryEl = document.getElementById('summary');
+    const btnRun    = document.getElementById('btn-run');
+
+    let passCount = 0;
+    let failCount = 0;
+
+    function renderCard(title, meta, lines) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        `<h2>${title}</h2><div class="meta">${meta}</div>` +
+        lines.map(l => `<div class="result-line result-${l.type}"><pre>${l.text}</pre></div>`).join('');
+      resultsEl.appendChild(card);
+    }
+
+    function updateSummary() {
+      if (failCount === 0) {
+        summaryEl.className = 'all-pass';
+        summaryEl.textContent =
+          `✅ All ${passCount} assertion group(s) passed — Property 3 holds for 100 runs each.`;
+      } else {
+        summaryEl.className = 'has-fail';
+        summaryEl.textContent =
+          `❌ ${failCount} assertion group(s) failed, ${passCount} passed.`;
+      }
+    }
+
+    // ── Helper: run one fc.assert and capture the result ─────────────────────
+    function runProperty(title, meta, property, opts = {}) {
+      try {
+        fc.assert(property, { numRuns: 100, ...opts });
+        passCount++;
+        renderCard(title, meta, [
+          { type: 'pass', text: `✓ PASSED — 100 runs, no counterexample found.` },
+        ]);
+      } catch (err) {
+        failCount++;
+        renderCard(title, meta, [
+          { type: 'fail', text: `✗ FAILED\n${err.message}` },
+        ]);
+      }
+    }
+
+    // ── Main test runner (called by the button) ──────────────────────────────
+    async function runTests() {
+      // Wait until the ES module has loaded and exposed __smTest
+      if (!window.__smTest) {
+        await new Promise(r => setTimeout(r, 300));
+        if (!window.__smTest) {
+          summaryEl.className = 'has-fail';
+          summaryEl.textContent =
+            '❌ Module load failed — check the browser console for import errors.';
+          return;
+        }
+      }
+
+      btnRun.disabled = true;
+      summaryEl.className = 'running';
+      summaryEl.textContent = '⏳ Running property tests…';
+      resultsEl.innerHTML = '';
+      passCount = 0;
+      failCount = 0;
+
+      const { State_Manager } = window.__smTest;
+
+      // States where cast() must be a no-op (everything except 'idle')
+      const NON_IDLE_STATES   = ['casting', 'waiting', 'biting', 'reeling', 'result'];
+      // States where reel() must be a no-op (everything except 'biting')
+      const NON_BITING_STATES = ['idle', 'casting', 'waiting', 'reeling', 'result'];
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 3a — cast() is a silent no-op when gameState !== 'idle'
+      //
+      // For any non-idle state, manually set sm.gameState to that state,
+      // call sm.cast(), and assert:
+      //   1. gameState is unchanged
+      //   2. no error is thrown
+      //
+      // Validates: Requirements 2.5
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 3a — cast() leaves state unchanged when not idle',
+        'Validates: Requirements 2.5 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; ' +
+        'Inputs: arbitrary non-idle states (casting, waiting, biting, reeling, result)',
+        fc.property(
+          // Pick one of the non-idle states on each run
+          fc.constantFrom(...NON_IDLE_STATES),
+          (nonIdleState) => {
+            const sm = new State_Manager();
+
+            // Force the state manager into the target non-idle state
+            // by directly setting gameState (bypasses the guard so we can
+            // test the guard itself on the cast() call below).
+            sm.gameState = nonIdleState;
+
+            let threw = false;
+            try {
+              sm.cast();
+            } catch (e) {
+              threw = true;
+            }
+
+            // The state must remain exactly what it was before the call
+            if (sm.gameState !== nonIdleState) {
+              throw new Error(
+                `cast() changed gameState from "${nonIdleState}" to "${sm.gameState}" — ` +
+                `expected no state change.`
+              );
+            }
+
+            // The call must not have thrown any error
+            if (threw) {
+              throw new Error(
+                `cast() threw an error when called in state "${nonIdleState}" — ` +
+                `expected silent ignore.`
+              );
+            }
+          }
+        )
+      );
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 3b — reel() is a silent no-op when gameState !== 'biting'
+      //
+      // For any non-biting state, manually set sm.gameState to that state,
+      // call sm.reel(), and assert:
+      //   1. gameState is unchanged
+      //   2. no error is thrown
+      //
+      // Validates: Requirements 4.8
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 3b — reel() leaves state unchanged when not biting',
+        'Validates: Requirements 4.8 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; ' +
+        'Inputs: arbitrary non-biting states (idle, casting, waiting, reeling, result)',
+        fc.property(
+          // Pick one of the non-biting states on each run
+          fc.constantFrom(...NON_BITING_STATES),
+          (nonBitingState) => {
+            const sm = new State_Manager();
+
+            // Force the state manager into the target non-biting state
+            sm.gameState = nonBitingState;
+
+            let threw = false;
+            try {
+              sm.reel();
+            } catch (e) {
+              threw = true;
+            }
+
+            // The state must remain exactly what it was before the call
+            if (sm.gameState !== nonBitingState) {
+              throw new Error(
+                `reel() changed gameState from "${nonBitingState}" to "${sm.gameState}" — ` +
+                `expected no state change.`
+              );
+            }
+
+            // The call must not have thrown any error
+            if (threw) {
+              throw new Error(
+                `reel() threw an error when called in state "${nonBitingState}" — ` +
+                `expected silent ignore.`
+              );
+            }
+          }
+        )
+      );
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 3c — Neither cast() nor reel() modify any other SM fields
+      //               when called as a no-op.
+      //
+      // For any arbitrary (score, inventorySize) combination paired with a
+      // non-idle-or-non-biting state, calling the guarded method must leave
+      // score and inventory.length completely unchanged.
+      //
+      // Validates: Requirements 2.5, 4.8
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 3c — Guarded calls do not mutate score or inventory',
+        'Validates: Requirements 2.5, 4.8 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; ' +
+        'Inputs: arbitrary score values + non-idle/non-biting states',
+        fc.property(
+          fc.integer({ min: 0, max: 9999 }),   // arbitrary score
+          fc.integer({ min: 0, max: 20 }),      // arbitrary inventory size
+          fc.boolean(),                          // true → test cast(), false → test reel()
+          (score, inventorySize, testCast) => {
+            const sm = new State_Manager();
+
+            // Set up arbitrary score and inventory
+            sm.score = score;
+            sm.inventory = Array.from({ length: inventorySize }, (_, i) => ({
+              fishType: { id: `fish_${i}`, points: 10 },
+              caughtAt: Date.now(),
+            }));
+
+            if (testCast) {
+              // Use a non-idle state so cast() must be a no-op
+              sm.gameState = 'waiting';
+              sm.cast();
+            } else {
+              // Use a non-biting state so reel() must be a no-op
+              sm.gameState = 'idle';
+              sm.reel();
+            }
+
+            // Score and inventory must be completely untouched
+            if (sm.score !== score) {
+              throw new Error(
+                `${testCast ? 'cast' : 'reel'}() mutated score: ` +
+                `expected ${score}, got ${sm.score}.`
+              );
+            }
+            if (sm.inventory.length !== inventorySize) {
+              throw new Error(
+                `${testCast ? 'cast' : 'reel'}() mutated inventory.length: ` +
+                `expected ${inventorySize}, got ${sm.inventory.length}.`
+              );
+            }
+          }
+        )
+      );
+
+      // ── Final summary ────────────────────────────────────────────────────
+      updateSummary();
+      btnRun.disabled = false;
+    }
+
+    // Expose runTests so the onclick attribute can reach it from the global scope
+    window.runTests = runTests;
+  </script>
+</body>
+</html>

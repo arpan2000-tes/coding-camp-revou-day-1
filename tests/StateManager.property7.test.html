@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Test — Property 7: Catch Integrity</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 780px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    h1 { color: #38bdf8; margin-bottom: 4px; }
+    .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 28px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .badge-info  { background: #1e40af; color: #bfdbfe; }
+    .badge-pass  { background: #14532d; color: #86efac; }
+    .badge-fail  { background: #7f1d1d; color: #fca5a5; }
+    .badge-run   { background: #78350f; color: #fde68a; }
+
+    .card {
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      background: #1e293b;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 1rem; color: #f1f5f9; }
+    .card .meta { font-size: 0.8rem; color: #64748b; margin-bottom: 12px; }
+    .result-line {
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .result-pass { background: #052e16; color: #86efac; border-left: 3px solid #22c55e; }
+    .result-fail { background: #450a0a; color: #fca5a5; border-left: 3px solid #ef4444; }
+    .result-info { background: #172554; color: #93c5fd; border-left: 3px solid #3b82f6; }
+
+    #summary {
+      font-size: 1.05rem;
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 28px;
+      font-weight: 600;
+    }
+    #summary.pending { background: #1c1917; color: #d6d3d1; border: 1px solid #44403c; }
+    #summary.running { background: #1c1400; color: #fde68a; border: 1px solid #78350f; }
+    #summary.all-pass { background: #052e16; color: #86efac; border: 1px solid #166534; }
+    #summary.has-fail { background: #450a0a; color: #fca5a5; border: 1px solid #991b1b; }
+
+    pre { margin: 0; }
+    button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      background: #0ea5e9;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #38bdf8; }
+    button:disabled { background: #334155; color: #64748b; cursor: default; }
+  </style>
+</head>
+<body>
+  <h1>🎣 Property Test</h1>
+  <p class="subtitle">
+    <span class="badge badge-info">Property 7</span>
+    Catch Integrity — Inventory Growth and Score Consistency &nbsp;·&nbsp;
+    <span class="badge badge-info">Validates: Req 4.3, 4.4</span>
+  </p>
+
+  <div id="summary" class="pending">⏳ Ready — click "Run Tests" to start.</div>
+
+  <button id="btn-run" onclick="runTests()">▶ Run Tests</button>
+
+  <div id="results" style="margin-top:24px;"></div>
+
+  <!-- fast-check UMD bundle — exposes global `fc` -->
+  <script src="https://cdn.jsdelivr.net/npm/fast-check/lib/bundle/fast-check.min.js"></script>
+
+  <script type="module">
+    // ── Import the modules under test ────────────────────────────────────────
+    import State_Manager from '../js/State_Manager.js';
+    import { FISH_CATALOG, selectFish } from '../js/FishCatalog.js';
+
+    // Expose to the inline onclick handler (module scope is private)
+    window.__catchTest = { State_Manager, FISH_CATALOG, selectFish };
+  </script>
+
+  <script>
+    // ── Tiny test-result renderer ─────────────────────────────────────────────
+    const resultsEl = document.getElementById('results');
+    const summaryEl = document.getElementById('summary');
+    const btnRun    = document.getElementById('btn-run');
+
+    let passCount = 0;
+    let failCount = 0;
+
+    function renderCard(title, meta, lines) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        `<h2>${title}</h2><div class="meta">${meta}</div>` +
+        lines.map(l => `<div class="result-line result-${l.type}"><pre>${l.text}</pre></div>`).join('');
+      resultsEl.appendChild(card);
+    }
+
+    function updateSummary(totalRuns) {
+      if (failCount === 0) {
+        summaryEl.className = 'all-pass';
+        summaryEl.textContent =
+          `✅ All ${passCount} assertion group(s) passed — Property 7 holds for ${totalRuns} runs.`;
+      } else {
+        summaryEl.className = 'has-fail';
+        summaryEl.textContent =
+          `❌ ${failCount} assertion group(s) failed, ${passCount} passed.`;
+      }
+    }
+
+    // ── Main test runner (called by the button) ──────────────────────────────
+    async function runTests() {
+      // Wait until the ES module has loaded and exposed __catchTest
+      if (!window.__catchTest) {
+        await new Promise(r => setTimeout(r, 300));
+        if (!window.__catchTest) {
+          summaryEl.className = 'has-fail';
+          summaryEl.textContent =
+            '❌ Module load failed — check the browser console for import errors.';
+          return;
+        }
+      }
+
+      btnRun.disabled = true;
+      summaryEl.className = 'running';
+      summaryEl.textContent = '⏳ Running property tests…';
+      resultsEl.innerHTML = '';
+      passCount = 0;
+      failCount = 0;
+
+      const { State_Manager, FISH_CATALOG } = window.__catchTest;
+
+      // ── Helper: run one fc.assert and capture the result ─────────────────
+      function runProperty(title, meta, property, opts = {}) {
+        try {
+          fc.assert(property, { numRuns: 100, ...opts });
+          passCount++;
+          renderCard(title, meta, [
+            { type: 'pass', text: `✓ PASSED — 100 runs, no counterexample found.` },
+          ]);
+        } catch (err) {
+          failCount++;
+          renderCard(title, meta, [
+            { type: 'fail', text: `✗ FAILED\n${err.message}` },
+          ]);
+        }
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 7a — Inventory grows by exactly 1 per addToInventory call.
+      //
+      // For each fish in a generated sequence (1–20 fish drawn from
+      // FISH_CATALOG), call addToInventory() and assert that inventory.length
+      // increased by exactly 1 compared to before.
+      //
+      // Validates: Requirement 4.3
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 7a — Inventory grows by exactly 1 per catch',
+        'Validates: Requirements 4.3 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; ' +
+        'Inputs: sequences of 1–20 fish from FISH_CATALOG',
+        fc.property(
+          // Generate a sequence of 1–20 indices into FISH_CATALOG
+          fc.array(
+            fc.integer({ min: 0, max: FISH_CATALOG.length - 1 }),
+            { minLength: 1, maxLength: 20 }
+          ),
+          (indices) => {
+            const sm = new State_Manager();
+            sm.startSession();
+
+            for (const idx of indices) {
+              const fish = FISH_CATALOG[idx];
+              const beforeLen = sm.inventory.length;
+              sm.addToInventory(fish);
+              const afterLen = sm.inventory.length;
+
+              if (afterLen !== beforeLen + 1) {
+                throw new Error(
+                  `inventory.length should have increased by 1 ` +
+                  `(was ${beforeLen}, got ${afterLen}) after adding fish "${fish.id}"`
+                );
+              }
+            }
+          }
+        )
+      );
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 7b — Score always equals the sum of all caught fish points.
+      //
+      // After every addToInventory() call, assert that sm.score equals
+      // the live reduce over sm.inventory.
+      //
+      // Validates: Requirement 4.4
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 7b — Score equals sum of inventory fish points after every catch',
+        'Validates: Requirements 4.4 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; ' +
+        'Inputs: sequences of 1–20 fish from FISH_CATALOG',
+        fc.property(
+          fc.array(
+            fc.integer({ min: 0, max: FISH_CATALOG.length - 1 }),
+            { minLength: 1, maxLength: 20 }
+          ),
+          (indices) => {
+            const sm = new State_Manager();
+            sm.startSession();
+
+            for (const idx of indices) {
+              const fish = FISH_CATALOG[idx];
+              sm.addToInventory(fish);
+
+              const expectedScore = sm.inventory.reduce(
+                (sum, entry) => sum + entry.fishType.points,
+                0
+              );
+
+              if (sm.score !== expectedScore) {
+                throw new Error(
+                  `Score mismatch after catching "${fish.id}": ` +
+                  `sm.score = ${sm.score}, ` +
+                  `inventory sum = ${expectedScore}`
+                );
+              }
+            }
+          }
+        )
+      );
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 7c — Both invariants hold simultaneously on every step.
+      //
+      // Combines 7a and 7b into one property to ensure they are consistent
+      // with each other throughout the entire sequence — not just at the end.
+      //
+      // Validates: Requirements 4.3, 4.4
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 7c — Inventory growth and score consistency hold simultaneously per catch',
+        'Validates: Requirements 4.3, 4.4 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; ' +
+        'Inputs: sequences of 1–20 fish from FISH_CATALOG',
+        fc.property(
+          fc.array(
+            fc.integer({ min: 0, max: FISH_CATALOG.length - 1 }),
+            { minLength: 1, maxLength: 20 }
+          ),
+          (indices) => {
+            const sm = new State_Manager();
+            sm.startSession();
+
+            for (const idx of indices) {
+              const fish = FISH_CATALOG[idx];
+              const beforeLen = sm.inventory.length;
+
+              sm.addToInventory(fish);
+
+              // Invariant 1: inventory grew by exactly 1 (Req 4.3)
+              if (sm.inventory.length !== beforeLen + 1) {
+                throw new Error(
+                  `[Req 4.3] inventory.length should be ${beforeLen + 1} ` +
+                  `but is ${sm.inventory.length} after adding "${fish.id}"`
+                );
+              }
+
+              // Invariant 2: score equals reduce sum of inventory (Req 4.4)
+              const expectedScore = sm.inventory.reduce(
+                (sum, entry) => sum + entry.fishType.points,
+                0
+              );
+              if (sm.score !== expectedScore) {
+                throw new Error(
+                  `[Req 4.4] Score mismatch after catching "${fish.id}": ` +
+                  `sm.score = ${sm.score}, inventory sum = ${expectedScore}. ` +
+                  `Inventory size: ${sm.inventory.length}`
+                );
+              }
+            }
+          }
+        )
+      );
+
+      // ── Final summary ────────────────────────────────────────────────────
+      updateSummary(300); // 3 properties × 100 runs each
+      btnRun.disabled = false;
+    }
+
+    // Expose runTests so the onclick attribute can reach it from the global scope
+    window.runTests = runTests;
+  </script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventBus Unit Tests</title>
+  <style>
+    body { font-family: monospace; padding: 1.5rem; background: #0f172a; color: #e2e8f0; }
+    h1   { color: #38bdf8; margin-bottom: 1rem; }
+    .suite { margin-bottom: 2rem; }
+    .suite h2 { color: #94a3b8; font-size: 1rem; margin-bottom: 0.5rem; text-transform: uppercase; }
+    .test { padding: 0.4rem 0.75rem; margin: 0.2rem 0; border-radius: 4px; font-size: 0.9rem; }
+    .pass { background: #14532d; color: #86efac; }
+    .fail { background: #7f1d1d; color: #fca5a5; }
+    .skip { background: #1e293b; color: #64748b; }
+    .summary { margin-top: 2rem; padding: 0.75rem 1rem; border-radius: 6px; font-size: 1rem; }
+    .summary.all-pass { background: #14532d; color: #86efac; }
+    .summary.has-fail  { background: #7f1d1d; color: #fca5a5; }
+    pre  { margin: 0.25rem 0 0 1.5rem; font-size: 0.8rem; color: #f87171; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>EventBus Unit Tests</h1>
+  <div id="output"></div>
+
+  <!--
+    fast-check is loaded via CDN as required by the spec.
+    EventBus is loaded as an ES module below in the inline <script type="module">.
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/fast-check/lib/bundle/fast-check.min.js"></script>
+
+  <script type="module">
+    import EventBus from '../js/EventBus.js';
+
+    /* ─────────────────────────────────────────────
+       Minimal in-page test runner
+    ───────────────────────────────────────────── */
+    const results = [];
+
+    async function test(description, fn) {
+      try {
+        await fn();
+        results.push({ ok: true, description });
+      } catch (err) {
+        results.push({ ok: false, description, error: err });
+      }
+    }
+
+    function assert(condition, message) {
+      if (!condition) throw new Error(message || 'Assertion failed');
+    }
+
+    /* ─────────────────────────────────────────────
+       Helper: fresh EventBus-like object per test.
+       Because EventBus is a singleton module, we
+       isolate tests by tracking handlers locally
+       (we add them and always clean up via off()).
+    ───────────────────────────────────────────── */
+
+    /* ─────────────────────────────────────────────
+       UNIT TESTS
+    ───────────────────────────────────────────── */
+
+    // Test 1 — A registered handler is called when the matching event is emitted.
+    await test('registered handler is called on matching emit', () => {
+      let called = false;
+      const handler = () => { called = true; };
+      EventBus.on('test:t1', handler);
+      EventBus.emit('test:t1');
+      EventBus.off('test:t1', handler);
+      assert(called, 'handler should have been called');
+    });
+
+    // Test 2 — Handler receives the correct payload.
+    await test('handler receives the emitted payload', () => {
+      let received = null;
+      const handler = (p) => { received = p; };
+      EventBus.on('test:t2', handler);
+      EventBus.emit('test:t2', { value: 42 });
+      EventBus.off('test:t2', handler);
+      assert(received !== null, 'payload should not be null');
+      assert(received.value === 42, `expected payload.value 42, got ${received && received.value}`);
+    });
+
+    // Test 3 — off removes exactly that handler and no others.
+    await test('off removes only the specified handler, not others', () => {
+      let calledA = false;
+      let calledB = false;
+      const handlerA = () => { calledA = true; };
+      const handlerB = () => { calledB = true; };
+
+      EventBus.on('test:t3', handlerA);
+      EventBus.on('test:t3', handlerB);
+      EventBus.off('test:t3', handlerA);   // remove A only
+      EventBus.emit('test:t3');
+      EventBus.off('test:t3', handlerB);   // cleanup B
+
+      assert(!calledA, 'handlerA should NOT have been called after off()');
+      assert(calledB,  'handlerB SHOULD still have been called');
+    });
+
+    // Test 4 — Emitting an event with no listeners does not throw.
+    await test('emit on event with no listeners does not throw', () => {
+      // This should simply not throw. If it does, the test runner catches it.
+      EventBus.emit('test:no-listeners-at-all');
+      EventBus.emit('test:no-listeners-at-all', { some: 'payload' });
+    });
+
+    // Test 5 — Multiple handlers for the same event are all called.
+    await test('multiple handlers for the same event are all invoked', () => {
+      const calls = [];
+      const h1 = () => calls.push(1);
+      const h2 = () => calls.push(2);
+      const h3 = () => calls.push(3);
+
+      EventBus.on('test:t5', h1);
+      EventBus.on('test:t5', h2);
+      EventBus.on('test:t5', h3);
+      EventBus.emit('test:t5');
+      EventBus.off('test:t5', h1);
+      EventBus.off('test:t5', h2);
+      EventBus.off('test:t5', h3);
+
+      assert(calls.length === 3, `expected 3 calls, got ${calls.length}`);
+      assert(calls.includes(1) && calls.includes(2) && calls.includes(3),
+        'all three handlers should have been called');
+    });
+
+    // Test 6 — off is a no-op when handler was never registered.
+    await test('off with an unregistered handler does not throw', () => {
+      const ghost = () => {};
+      EventBus.off('test:ghost', ghost); // event doesn't even exist
+      EventBus.on('test:t6-exists', () => {});
+      EventBus.off('test:t6-exists', ghost); // handler not in list
+      EventBus.off('test:t6-exists', () => {}); // cleanup stray
+    });
+
+    // Test 7 — A handler thrown during emit does not stop other handlers.
+    await test('a throwing handler does not prevent other handlers from being called', () => {
+      let secondCalled = false;
+      const bad  = () => { throw new Error('intentional test error'); };
+      const good = () => { secondCalled = true; };
+
+      EventBus.on('test:t7', bad);
+      EventBus.on('test:t7', good);
+      EventBus.emit('test:t7');  // should not throw itself
+      EventBus.off('test:t7', bad);
+      EventBus.off('test:t7', good);
+
+      assert(secondCalled, 'second handler should run even when the first throws');
+    });
+
+    /* ─────────────────────────────────────────────
+       PROPERTY-BASED TESTS (fast-check via CDN)
+       Validates: Requirements 2.5, 4.8
+    ───────────────────────────────────────────── */
+
+    // Property A — Any registered handler is always called on the matching event.
+    // Validates: Requirements 2.5, 4.8
+    await test('[PBT] any registered handler is always called on matching emit', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 30 }),
+          fc.anything(),
+          (eventName, payload) => {
+            // prefix to avoid collisions with other tests
+            const ev = 'pbt:a:' + eventName;
+            let called = false;
+            const h = () => { called = true; };
+            EventBus.on(ev, h);
+            EventBus.emit(ev, payload);
+            EventBus.off(ev, h);
+            return called === true;
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    // Property B — After off(), a removed handler is never called again.
+    // Validates: Requirements 2.5, 4.8
+    await test('[PBT] removed handler is never called after off()', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 30 }),
+          fc.anything(),
+          (eventName, payload) => {
+            const ev = 'pbt:b:' + eventName;
+            let calledAfterOff = false;
+            const h = () => { calledAfterOff = true; };
+            EventBus.on(ev, h);
+            EventBus.off(ev, h);
+            EventBus.emit(ev, payload);
+            return calledAfterOff === false;
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    // Property C — Emitting any event name with no listeners never throws.
+    // Validates: Requirements 2.5, 4.8
+    await test('[PBT] emitting an unknown event never throws', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 40 }),
+          fc.anything(),
+          (eventName, payload) => {
+            const ev = 'pbt:c:unknown:' + eventName;
+            try {
+              EventBus.emit(ev, payload);
+              return true;
+            } catch (_) {
+              return false;
+            }
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    // Property D — Multiple handlers all receive the same payload.
+    // Validates: Requirements 2.5, 4.8
+    await test('[PBT] all handlers for an event receive the emitted payload', () => {
+      fc.assert(
+        fc.property(
+          fc.string({ minLength: 1, maxLength: 30 }),
+          fc.integer({ min: -9999, max: 9999 }),
+          fc.integer({ min: 2, max: 6 }),
+          (eventName, value, count) => {
+            const ev = 'pbt:d:' + eventName;
+            const received = [];
+            const handlers = [];
+
+            for (let i = 0; i < count; i++) {
+              const h = (p) => received.push(p && p.value);
+              handlers.push(h);
+              EventBus.on(ev, h);
+            }
+            EventBus.emit(ev, { value });
+            handlers.forEach(h => EventBus.off(ev, h));
+
+            return received.length === count &&
+                   received.every(v => v === value);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /* ─────────────────────────────────────────────
+       Render results
+    ───────────────────────────────────────────── */
+    const output = document.getElementById('output');
+
+    const unitDiv  = document.createElement('div');
+    unitDiv.className = 'suite';
+    unitDiv.innerHTML = '<h2>Unit Tests &amp; Property Tests</h2>';
+
+    let passCount = 0;
+    let failCount = 0;
+
+    for (const r of results) {
+      const div = document.createElement('div');
+      div.className = 'test ' + (r.ok ? 'pass' : 'fail');
+      div.textContent = (r.ok ? '✓ ' : '✗ ') + r.description;
+      if (!r.ok && r.error) {
+        const pre = document.createElement('pre');
+        pre.textContent = r.error.message || String(r.error);
+        div.appendChild(pre);
+      }
+      unitDiv.appendChild(div);
+      r.ok ? passCount++ : failCount++;
+    }
+    output.appendChild(unitDiv);
+
+    const summary = document.createElement('div');
+    summary.className = 'summary ' + (failCount === 0 ? 'all-pass' : 'has-fail');
+    summary.textContent = `${passCount} passed, ${failCount} failed out of ${results.length} tests`;
+    output.appendChild(summary);
+
+    // Also mirror results to the console for CI / headless inspection
+    console.group('EventBus Test Results');
+    for (const r of results) {
+      if (r.ok) {
+        console.log('%c✓ ' + r.description, 'color: #86efac');
+      } else {
+        console.error('✗ ' + r.description, r.error);
+      }
+    }
+    console.log(`\nSummary: ${passCount} passed, ${failCount} failed`);
+    console.groupEnd();
+  </script>
+</body>
+</html>

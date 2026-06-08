@@ -155,6 +155,125 @@ class State_Manager {
   }
 
   // ---------------------------------------------------------------------------
+  // Fishing lifecycle
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Initiate a cast action.
+   * Guard: only runs when gameState === 'idle'.
+   * Transitions to 'casting', emits 'cast:initiated', then after a 700ms stub
+   * timeout transitions to 'waiting' and schedules a bite event.
+   *
+   * Requirements: 2.1, 2.5
+   */
+  cast() {
+    if (this.gameState !== 'idle') return; // guard
+
+    this.transitionTo('casting');
+    EventBus.emit('cast:initiated');
+
+    // Stub timeout — replaced in task 11.1 by Renderer's real animateCast() Promise
+    setTimeout(() => {
+      this.transitionTo('waiting');
+      this.scheduleBite();
+    }, 700);
+  }
+
+  /**
+   * Schedule a bite event at a random delay between 2000–6000ms.
+   * Stores the setTimeout id in biteTimeoutId.
+   *
+   * Requirement: 3.1
+   */
+  scheduleBite() {
+    const delay = 2000 + Math.floor(Math.random() * 4001);
+    this.biteTimeoutId = setTimeout(() => {
+      this.biteTimeoutId = null;
+      this.fireBite();
+    }, delay);
+  }
+
+  /**
+   * Fire the bite event.
+   * Transitions to 'biting', emits 'bite:occurred', and starts a 3000ms
+   * reaction window that calls missEvent() on expiry.
+   *
+   * Requirements: 3.4, 3.5
+   */
+  fireBite() {
+    this.transitionTo('biting');
+    EventBus.emit('bite:occurred');
+
+    this.reactionTimeoutId = setTimeout(() => {
+      this.missEvent();
+    }, 3000);
+  }
+
+  /**
+   * Handle a missed bite (reaction window expired).
+   * Clears reactionTimeoutId, emits 'miss:occurred', transitions to 'idle'.
+   *
+   * Requirement: 3.6
+   */
+  missEvent() {
+    clearTimeout(this.reactionTimeoutId);
+    this.reactionTimeoutId = null;
+
+    EventBus.emit('miss:occurred');
+    this.transitionTo('idle');
+  }
+
+  /**
+   * Reel in the line after a fish bites.
+   * Guard: only runs when gameState === 'biting'.
+   * Clears the reaction window, transitions to 'reeling', selects and adds a
+   * fish to inventory, emits 'fish:caught', then after an 800ms stub timeout
+   * transitions back to 'idle'.
+   *
+   * Requirements: 4.1, 4.3, 4.4, 4.7, 4.8
+   */
+  reel() {
+    if (this.gameState !== 'biting') return; // guard
+
+    clearTimeout(this.reactionTimeoutId);
+    this.reactionTimeoutId = null;
+
+    this.transitionTo('reeling');
+
+    const caughtFish = selectFish(FISH_CATALOG);
+    this.addToInventory(caughtFish);
+
+    const lastCaughtFish = this.inventory[this.inventory.length - 1].fishType;
+    EventBus.emit('fish:caught', {
+      fish: lastCaughtFish,
+      score: this.score,
+      inventory: this.inventory,
+    });
+
+    // Stub timeout — replaced in task 11.1 by Renderer's real animateReel() Promise
+    setTimeout(() => {
+      this.transitionTo('idle');
+    }, 800);
+  }
+
+  /**
+   * Add a caught fish to the inventory and update the score.
+   * Emits 'score:updated' with the new score and fish count.
+   *
+   * @param {import('./FishCatalog.js').FishType} fish
+   *
+   * Requirements: 4.3, 4.4
+   */
+  addToInventory(fish) {
+    this.inventory.push({ fishType: fish, caughtAt: Date.now() });
+    this.score += fish.points;
+    EventBus.emit('score:updated', {
+      score: this.score,
+      fishCount: this.inventory.length,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Mute control
   // ---------------------------------------------------------------------------
 

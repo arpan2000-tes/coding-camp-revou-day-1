@@ -11,7 +11,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
 
 ## Tasks
 
-- [~] 1. Project scaffolding and file structure
+- [x] 1. Project scaffolding and file structure
   - Create every file and directory listed in the design's File Structure section:
     `index.html`, `css/animations.css`, `js/main.js`, `js/EventBus.js`,
     `js/State_Manager.js`, `js/Renderer.js`, `js/Audio_Manager.js`,
@@ -31,7 +31,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Export as a module-level singleton (`const EventBus = { … }; export default EventBus;`).
     - _Requirements: (internal — enables all cross-component communication)_
 
-  - [ ]* 2.2 Write unit tests for EventBus
+  - [-] 2.2 Write unit tests for EventBus
     - Test that a registered handler is called when the matching event is emitted.
     - Test that `off` removes exactly that handler and no others.
     - Test that emitting an event with no listeners does not throw.
@@ -45,7 +45,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Implement and export `selectFish(catalog)` using the weighted random algorithm from the design.
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ]* 3.2 Write property test — Property 9: Weighted Random Selects a Valid Fish
+  - [ ] 3.2 Write property test — Property 9: Weighted Random Selects a Valid Fish
     - **Property 9: Weighted Random Selects a Valid Fish**
     - **Validates: Requirements 5.2**
     - Use fast-check (CDN) to generate arbitrary subsets of the catalog (all weights > 0).
@@ -53,7 +53,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
       never `null` or `undefined`.
 
 - [ ] 4. State_Manager module
-  - [-] 4.1 Implement `State_Manager.js` — core state machine skeleton
+  - [x] 4.1 Implement `State_Manager.js` — core state machine skeleton
     - Define the `State_Manager` class with all properties from the design
       (`gameState`, `score`, `highScore`, `inventory`, `timer`, `timerIntervalId`,
       `biteTimeoutId`, `reactionTimeoutId`, `isMuted`).
@@ -69,7 +69,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Import `EventBus` and `FISH_CATALOG` / `selectFish` from their respective modules.
     - _Requirements: 7.1, 7.3, 8.3, 8.5, 9.5_
 
-  - [~] 4.2 Implement cast/waiting/bite/reel lifecycle methods
+  - [x] 4.2 Implement cast/waiting/bite/reel lifecycle methods
     - `cast()` — guard: only runs when `gameState === 'idle'`; transitions to `casting`;
       emits `cast:initiated`; calls `transitionTo('waiting')` after cast animation duration
       (use a `Promise`-returning `animateCast` stub or a fixed 700ms `setTimeout` to be
@@ -86,13 +86,13 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
       increments `score` by `fish.points`; emits `score:updated` with `{ score, fishCount }`.
     - _Requirements: 2.1, 2.4, 2.5, 3.1, 3.4, 3.5, 3.6, 4.1, 4.3, 4.4, 4.7, 4.8_
 
-  - [ ]* 4.3 Write property test — Property 1: Valid Cast Transition
+  - [-] 4.3 Write property test — Property 1: Valid Cast Transition
     - **Property 1: Valid Cast Transition**
     - **Validates: Requirements 2.1**
     - Instantiate `State_Manager` and set `gameState = 'idle'`.
     - Use fast-check to run `cast()` repeatedly; assert state always transitions to `casting`.
 
-  - [ ]* 4.4 Write property test — Property 3: Invalid Actions Are Silently Ignored
+  - [~] 4.4 Write property test — Property 3: Invalid Actions Are Silently Ignored
     - **Property 3: Invalid Actions Are Silently Ignored**
     - **Validates: Requirements 2.5, 4.8**
     - Use fast-check to generate non-`idle` states; assert `cast()` leaves state unchanged
@@ -100,39 +100,39 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Use fast-check to generate non-`biting` states; assert `reel()` leaves state unchanged
       and throws no error.
 
-  - [ ]* 4.5 Write property test — Property 7: Catch Integrity
+  - [~] 4.5 Write property test — Property 7: Catch Integrity
     - **Property 7: Catch Integrity — Inventory Growth and Score Consistency**
     - **Validates: Requirements 4.3, 4.4**
     - Use fast-check to generate random sequences of caught fish (from the catalog).
     - After each catch, assert `inventory.length` increased by exactly 1 and
       `score === inventory.reduce((s, e) => s + e.fishType.points, 0)`.
 
-  - [ ]* 4.6 Write property test — Property 13: Restart Produces Clean State
+  - [ ] 4.6 Write property test — Property 13: Restart Produces Clean State
     - **Property 13: Restart Produces Clean State**
     - **Validates: Requirements 8.3**
     - Use fast-check to generate arbitrary game states (various scores, inventories, timers).
     - Assert that after `restartSession()`, `score === 0`, `inventory.length === 0`,
       `timerRemaining === 60`, and `gameState === 'idle'`.
 
-  - [ ]* 4.7 Write property test — Property 14: High Score Is Non-Decreasing Maximum
+  - [ ] 4.7 Write property test — Property 14: High Score Is Non-Decreasing Maximum
     - **Property 14: High Score Is Non-Decreasing Maximum**
     - **Validates: Requirements 8.5**
     - Use fast-check to generate arrays of non-negative session scores.
     - Simulate calling `endSession()` for each score; assert `highScore` always equals
       `Math.max(...scores)` and never decreases between sessions.
 
-  - [ ]* 4.8 Write property test — Property 11: Timer Expiry Ends Session
+  - [ ] 4.8 Write property test — Property 11: Timer Expiry Ends Session
     - **Property 11: Timer Expiry Ends Session**
     - **Validates: Requirements 7.3, 7.5**
     - Simulate timer reaching 0 while `biteTimeoutId` is set; assert `gameState` transitions
       to `result` and `biteTimeoutId` is cleared (null).
 
-- [~] 5. Checkpoint — core logic verified
+- [x] 5. Checkpoint — core logic verified
   - Ensure all unit and property tests pass. Open `index.html` in a browser; no console errors
     should appear on load. Ask the user if any questions arise before proceeding.
 
-- [ ] 6. Audio_Manager module
-  - [~] 6.1 Implement `Audio_Manager.js` with Web Audio API and graceful degradation
+- [x] 6. Audio_Manager module
+  - [x] 6.1 Implement `Audio_Manager.js` with Web Audio API and graceful degradation
     - Constructor creates `AudioContext` inside a `try/catch`; if creation fails, store
       `this.context = null`.
     - `init()` — calls `_loadSound` for each of the 4 sound names (`cast`, `splash`, `bite`,
@@ -148,7 +148,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
       `fish:caught` → play `'catch'`; splash timing handled by Renderer event.
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.6_
 
-  - [ ]* 6.2 Write property test — Property 15: Mute Toggle Is a Round Trip
+  - [ ] 6.2 Write property test — Property 15: Mute Toggle Is a Round Trip
     - **Property 15: Mute Toggle Is a Round Trip**
     - **Validates: Requirements 9.5**
     - Use fast-check to generate arbitrary initial `isMuted` values.
@@ -179,8 +179,8 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
       `.animate-timer-pulse`, `.animate-cloud-drift`).
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
 
-- [ ] 9. `index.html` — full UI markup
-  - [-] 9.1 Write the complete HTML structure using Tailwind CSS utility classes
+- [x] 9. `index.html` — full UI markup
+  - [x] 9.1 Write the complete HTML structure using Tailwind CSS utility classes
     - HUD bar (fixed top): mute toggle button, score/fish-count display, timer display.
     - Sky area (`~25vh`): container for cloud/bird elements generated by JS.
     - Water area (`~50vh`): water surface div with ripple overlay, bobber/hook element,
@@ -195,15 +195,15 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - All `<script type="module">` tags at end of `<body>`.
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-  - [ ]* 9.2 Write property test — Property 10: Inventory Row Renders Rarity and Points
+  - [ ] 9.2 Write property test — Property 10: Inventory Row Renders Rarity and Points
     - **Property 10: Inventory Row Renders Rarity and Points**
     - **Validates: Requirements 5.4**
     - Use fast-check to generate arbitrary `FishEntry` objects (valid fishType + caughtAt).
     - Call `Renderer.updateInventoryPanel([entry])` and assert the resulting DOM row
       contains both the rarity string and the numeric points value of the fish.
 
-- [ ] 10. Renderer module — DOM wiring and static rendering
-  - [~] 10.1 Implement `Renderer.js` — `init()`, screen transitions, and HUD updates
+- [x] 10. Renderer module — DOM wiring and static rendering
+  - [x] 10.1 Implement `Renderer.js` — `init()`, screen transitions, and HUD updates
     - Cache all element references (`getElementById`/`querySelector`) into `this.elements`;
       guard each with a `null` check and `console.error` on missing elements.
     - Subscribe to EventBus events: `state:changed`, `score:updated`, `timer:tick`,
@@ -228,7 +228,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
       in the water area on a repeating interval; attach `.animate-ripple`.
     - _Requirements: 1.2, 1.3, 1.4, 6.1, 6.2, 6.3, 6.4, 6.5, 7.2, 7.4, 8.1, 8.2, 8.4, 10.6_
 
-  - [~] 10.2 Implement cast and reel animations in `Renderer.js`
+  - [x] 10.2 Implement cast and reel animations in `Renderer.js`
     - `animateCast()` — resolve rod-tip and random water-entry coordinates; run a
       `requestAnimationFrame` loop computing quadratic Bézier `(x(t), y(t))` from the design
       formulas; move the hook element each frame; resolve the returned `Promise` when `t ≥ 1`.
@@ -242,7 +242,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
       Duration must be randomly chosen between 600ms and 1000ms per the design spec.
     - _Requirements: 2.2, 2.3, 3.2, 4.2, 10.1, 10.2, 10.4, 10.5_
 
-  - [ ]* 10.3 Write property test — Property 16: Animation Durations Are Within Specified Ranges
+  - [ ] 10.3 Write property test — Property 16: Animation Durations Are Within Specified Ranges
     - **Property 16: Animation Durations Are Within Specified Ranges**
     - **Validates: Requirements 10.1, 10.4**
     - Use fast-check to call `animateCast()` (or expose its duration-selection logic) many times;
@@ -250,8 +250,8 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Use fast-check to call `animateReel()` duration-selection logic many times;
       assert every sampled duration is in [600, 1000].
 
-- [ ] 11. `main.js` — entry point and full wiring
-  - [~] 11.1 Wire all modules together in `main.js`
+- [x] 11. `main.js` — entry point and full wiring
+  - [x] 11.1 Wire all modules together in `main.js`
     - Import `EventBus`, `State_Manager`, `Renderer`, `Audio_Manager`,
       `FISH_CATALOG`, and `selectFish` from their respective modules.
     - Instantiate `State_Manager` and `Renderer`; call `Renderer.init()` then
@@ -268,42 +268,42 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Show start screen via `Renderer.showStartScreen()`.
     - _Requirements: 1.4, 2.1, 2.2, 3.2, 4.1, 4.2, 9.5_
 
-  - [ ]* 11.2 Write property test — Property 2: Cast-to-Waiting Transition
+  - [ ] 11.2 Write property test — Property 2: Cast-to-Waiting Transition
     - **Property 2: Cast-to-Waiting Transition**
     - **Validates: Requirements 2.4**
     - Stub `Renderer.animateCast()` to resolve immediately.
     - Use fast-check to confirm that for any `casting` state, completing the animation always
       results in `waiting` and never any other state.
 
-  - [ ]* 11.3 Write property test — Property 4: Bite Triggers Biting State
+  - [ ] 11.3 Write property test — Property 4: Bite Triggers Biting State
     - **Property 4: Bite Triggers Biting State**
     - **Validates: Requirements 3.4**
     - Stub `scheduleBite()` to fire immediately; use fast-check to confirm `waiting` → `biting`
       for any valid session.
 
-  - [ ]* 11.4 Write property test — Property 5: Missed Bite Returns to Idle
+  - [ ] 11.4 Write property test — Property 5: Missed Bite Returns to Idle
     - **Property 5: Missed Bite Returns to Idle**
     - **Validates: Requirements 3.6**
     - Stub reaction-window timer to expire immediately; use fast-check to confirm `biting` → `idle`.
 
-  - [ ]* 11.5 Write property test — Property 6: Reel Action Triggers Reeling State
+  - [ ] 11.5 Write property test — Property 6: Reel Action Triggers Reeling State
     - **Property 6: Reel Action Triggers Reeling State**
     - **Validates: Requirements 4.1**
     - Use fast-check to call `reel()` in `biting` state; assert transition to `reeling`.
 
-  - [ ]* 11.6 Write property test — Property 8: Reel Completion Returns to Idle
+  - [ ] 11.6 Write property test — Property 8: Reel Completion Returns to Idle
     - **Property 8: Reel Completion Returns to Idle**
     - **Validates: Requirements 4.7**
     - Stub `Renderer.animateReel()` to resolve immediately; assert `reeling` → `idle`.
 
-  - [ ]* 11.7 Write property test — Property 12: Timer Warning Threshold
+  - [ ] 11.7 Write property test — Property 12: Timer Warning Threshold
     - **Property 12: Timer Warning Threshold**
     - **Validates: Requirements 7.4**
     - Use fast-check to generate arbitrary `remaining` values (0–60).
     - Assert that the timer element has `.animate-timer-pulse` if and only if
       `remaining ≤ 10`.
 
-- [~] 12. Final checkpoint — full integration verified
+- [x] 12. Final checkpoint — full integration verified
   - Ensure all unit and property tests pass.
   - Open `index.html` in a browser; play through a full session (cast → wait → bite → reel →
     result → restart) and verify no console errors.
