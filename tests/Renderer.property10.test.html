@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Test — Property 10: Inventory Row Renders Rarity and Points</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 780px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    h1 { color: #38bdf8; margin-bottom: 4px; }
+    .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 28px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .badge-info  { background: #1e40af; color: #bfdbfe; }
+    .badge-pass  { background: #14532d; color: #86efac; }
+    .badge-fail  { background: #7f1d1d; color: #fca5a5; }
+    .badge-run   { background: #78350f; color: #fde68a; }
+
+    .card {
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      background: #1e293b;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 1rem; color: #f1f5f9; }
+    .card .meta { font-size: 0.8rem; color: #64748b; margin-bottom: 12px; }
+    .result-line {
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .result-pass { background: #052e16; color: #86efac; border-left: 3px solid #22c55e; }
+    .result-fail { background: #450a0a; color: #fca5a5; border-left: 3px solid #ef4444; }
+    .result-info { background: #172554; color: #93c5fd; border-left: 3px solid #3b82f6; }
+
+    #summary {
+      font-size: 1.05rem;
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 28px;
+      font-weight: 600;
+    }
+    #summary.pending { background: #1c1917; color: #d6d3d1; border: 1px solid #44403c; }
+    #summary.running { background: #1c1400; color: #fde68a; border: 1px solid #78350f; }
+    #summary.all-pass { background: #052e16; color: #86efac; border: 1px solid #166534; }
+    #summary.has-fail { background: #450a0a; color: #fca5a5; border: 1px solid #991b1b; }
+
+    pre { margin: 0; }
+    button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      background: #0ea5e9;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #38bdf8; }
+    button:disabled { background: #334155; color: #64748b; cursor: default; }
+  </style>
+</head>
+<body>
+  <h1>🎣 Property Test</h1>
+  <p class="subtitle">
+    <span class="badge badge-info">Property 10</span>
+    Inventory Row Renders Rarity and Points &nbsp;·&nbsp;
+    <span class="badge badge-info">Validates: Requirements 5.4</span>
+  </p>
+
+  <div id="summary" class="pending">⏳ Ready — click "Run Tests" to start.</div>
+
+  <button id="btn-run" onclick="runTests()">▶ Run Tests</button>
+
+  <div id="results" style="margin-top:24px;"></div>
+
+  <!-- fast-check UMD bundle — exposes global `fc` -->
+  <script src="https://cdn.jsdelivr.net/npm/fast-check/lib/bundle/fast-check.min.js"></script>
+
+  <script type="module">
+    // ── Import the modules under test ────────────────────────────────────────
+    import Renderer from '../js/Renderer.js';
+    import { FISH_CATALOG } from '../js/FishCatalog.js';
+
+    // Expose to the inline onclick handler (module scope is private)
+    window.__rendererTest = { Renderer, FISH_CATALOG };
+  </script>
+
+  <script>
+    // ── Tiny test-result renderer ─────────────────────────────────────────────
+    const resultsEl = document.getElementById('results');
+    const summaryEl = document.getElementById('summary');
+    const btnRun    = document.getElementById('btn-run');
+
+    let passCount = 0;
+    let failCount = 0;
+
+    function renderCard(title, meta, lines) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        `<h2>${title}</h2><div class="meta">${meta}</div>` +
+        lines.map(l => `<div class="result-line result-${l.type}"><pre>${l.text}</pre></div>`).join('');
+      resultsEl.appendChild(card);
+    }
+
+    function updateSummary(totalProps) {
+      if (failCount === 0) {
+        summaryEl.className = 'all-pass';
+        summaryEl.textContent =
+          `✅ All ${passCount} assertion group(s) passed — Property 10 holds for 100 runs.`;
+      } else {
+        summaryEl.className = 'has-fail';
+        summaryEl.textContent =
+          `❌ ${failCount} assertion group(s) failed, ${passCount} passed.`;
+      }
+    }
+
+    // ── Main test runner (called by the button) ──────────────────────────────
+    async function runTests() {
+      // Wait until the ES module has loaded and exposed __rendererTest
+      if (!window.__rendererTest) {
+        await new Promise(r => setTimeout(r, 300));
+        if (!window.__rendererTest) {
+          summaryEl.className = 'has-fail';
+          summaryEl.textContent =
+            '❌ Module load failed — check the browser console for import errors.';
+          return;
+        }
+      }
+
+      btnRun.disabled = true;
+      summaryEl.className = 'running';
+      summaryEl.textContent = '⏳ Running property tests…';
+      resultsEl.innerHTML = '';
+      passCount = 0;
+      failCount = 0;
+
+      const { Renderer, FISH_CATALOG } = window.__rendererTest;
+
+      // ── Set up minimal DOM environment required by Renderer.init() ─────────
+      // Renderer._cacheElements() uses document.querySelector for each selector.
+      // We only need #inventory-list and #inventory-empty; all other selectors
+      // will resolve to null — Renderer guards each with a null-check before use.
+      let inventoryList  = document.getElementById('inventory-list');
+      let inventoryEmpty = document.getElementById('inventory-empty');
+
+      if (!inventoryList) {
+        inventoryList = document.createElement('ul');
+        inventoryList.id = 'inventory-list';
+        document.body.appendChild(inventoryList);
+      }
+      if (!inventoryEmpty) {
+        inventoryEmpty = document.createElement('p');
+        inventoryEmpty.id = 'inventory-empty';
+        document.body.appendChild(inventoryEmpty);
+      }
+
+      // ── Helper: run one fc.assert and capture the result ──────────────────
+      function runProperty(title, meta, property, opts = {}) {
+        try {
+          fc.assert(property, { numRuns: 100, ...opts });
+          passCount++;
+          renderCard(title, meta, [
+            { type: 'pass', text: `✓ PASSED — 100 runs, no counterexample found.` },
+          ]);
+        } catch (err) {
+          failCount++;
+          renderCard(title, meta, [
+            { type: 'fail', text: `✗ FAILED\n${err.message}` },
+          ]);
+        }
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 10a — updateInventoryPanel([entry]) renders exactly 1 <li>
+      //
+      // For every arbitrary fish (by index) and caughtAt timestamp, calling
+      // updateInventoryPanel with a single-entry array must produce exactly
+      // one <li> element inside #inventory-list.
+      //
+      // Validates: Requirements 5.4
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 10a — updateInventoryPanel([entry]) renders exactly 1 <li> in #inventory-list',
+        'Validates: Requirements 5.4 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; Inputs: arbitrary fish index (0–5) + arbitrary caughtAt timestamp',
+        fc.property(
+          fc.integer({ min: 0, max: 5 }),
+          fc.nat(),
+          (idx, caughtAt) => {
+            const fishType = FISH_CATALOG[idx];
+            const entry = { fishType, caughtAt };
+
+            // Clear list and create a fresh Renderer instance each run
+            inventoryList.innerHTML = '';
+
+            const renderer = new Renderer();
+            renderer.init(); // logs errors for missing elements — expected
+
+            renderer.updateInventoryPanel([entry]);
+
+            const items = inventoryList.querySelectorAll('li');
+            if (items.length !== 1) {
+              throw new Error(
+                `Expected exactly 1 <li> after updateInventoryPanel([entry]) ` +
+                `for fish "${fishType.id}", but got ${items.length}`
+              );
+            }
+          }
+        )
+      );
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 10b — The rendered <li> contains the fish's rarity string
+      //
+      // For every arbitrary fish, the innerHTML of the rendered <li> must
+      // include the fish's rarity value (e.g. 'common', 'uncommon', 'rare').
+      //
+      // Validates: Requirements 5.4
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 10b — Rendered <li> innerHTML contains the fish rarity string',
+        'Validates: Requirements 5.4 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; Inputs: arbitrary fish index (0–5) + arbitrary caughtAt timestamp',
+        fc.property(
+          fc.integer({ min: 0, max: 5 }),
+          fc.nat(),
+          (idx, caughtAt) => {
+            const fishType = FISH_CATALOG[idx];
+            const entry = { fishType, caughtAt };
+
+            inventoryList.innerHTML = '';
+
+            const renderer = new Renderer();
+            renderer.init();
+
+            renderer.updateInventoryPanel([entry]);
+
+            const li = inventoryList.querySelector('li');
+            if (!li) {
+              throw new Error(
+                `No <li> found after updateInventoryPanel([entry]) for fish "${fishType.id}"`
+              );
+            }
+
+            const html = li.innerHTML;
+            if (!html.includes(fishType.rarity)) {
+              throw new Error(
+                `Expected <li> innerHTML to contain rarity "${fishType.rarity}" ` +
+                `for fish "${fishType.id}", but got: ${html}`
+              );
+            }
+          }
+        )
+      );
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 10c — The rendered <li> contains the fish's numeric points value
+      //
+      // For every arbitrary fish, the innerHTML of the rendered <li> must
+      // include the numeric points value as a string (e.g. "15", "120").
+      //
+      // Validates: Requirements 5.4
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 10c — Rendered <li> innerHTML contains the numeric points value',
+        'Validates: Requirements 5.4 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; Inputs: arbitrary fish index (0–5) + arbitrary caughtAt timestamp',
+        fc.property(
+          fc.integer({ min: 0, max: 5 }),
+          fc.nat(),
+          (idx, caughtAt) => {
+            const fishType = FISH_CATALOG[idx];
+            const entry = { fishType, caughtAt };
+
+            inventoryList.innerHTML = '';
+
+            const renderer = new Renderer();
+            renderer.init();
+
+            renderer.updateInventoryPanel([entry]);
+
+            const li = inventoryList.querySelector('li');
+            if (!li) {
+              throw new Error(
+                `No <li> found after updateInventoryPanel([entry]) for fish "${fishType.id}"`
+              );
+            }
+
+            const html = li.innerHTML;
+            const pointsStr = String(fishType.points);
+            if (!html.includes(pointsStr)) {
+              throw new Error(
+                `Expected <li> innerHTML to contain points "${pointsStr}" ` +
+                `for fish "${fishType.id}" (${fishType.rarity}), but got: ${html}`
+              );
+            }
+          }
+        )
+      );
+
+      // ── Final summary ────────────────────────────────────────────────────
+      updateSummary();
+      btnRun.disabled = false;
+    }
+
+    // Expose runTests so the onclick attribute can reach it from the global scope
+    window.runTests = runTests;
+  </script>
+</body>
+</html>

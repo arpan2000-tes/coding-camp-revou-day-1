@@ -31,7 +31,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Export as a module-level singleton (`const EventBus = { … }; export default EventBus;`).
     - _Requirements: (internal — enables all cross-component communication)_
 
-  - [-] 2.2 Write unit tests for EventBus
+  - [x] 2.2 Write unit tests for EventBus
     - Test that a registered handler is called when the matching event is emitted.
     - Test that `off` removes exactly that handler and no others.
     - Test that emitting an event with no listeners does not throw.
@@ -45,7 +45,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Implement and export `selectFish(catalog)` using the weighted random algorithm from the design.
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 3.2 Write property test — Property 9: Weighted Random Selects a Valid Fish
+  - [x] 3.2 Write property test — Property 9: Weighted Random Selects a Valid Fish
     - **Property 9: Weighted Random Selects a Valid Fish**
     - **Validates: Requirements 5.2**
     - Use fast-check (CDN) to generate arbitrary subsets of the catalog (all weights > 0).
@@ -92,7 +92,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Instantiate `State_Manager` and set `gameState = 'idle'`.
     - Use fast-check to run `cast()` repeatedly; assert state always transitions to `casting`.
 
-  - [~] 4.4 Write property test — Property 3: Invalid Actions Are Silently Ignored
+  - [-] 4.4 Write property test — Property 3: Invalid Actions Are Silently Ignored
     - **Property 3: Invalid Actions Are Silently Ignored**
     - **Validates: Requirements 2.5, 4.8**
     - Use fast-check to generate non-`idle` states; assert `cast()` leaves state unchanged
@@ -100,28 +100,28 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Use fast-check to generate non-`biting` states; assert `reel()` leaves state unchanged
       and throws no error.
 
-  - [~] 4.5 Write property test — Property 7: Catch Integrity
+  - [-] 4.5 Write property test — Property 7: Catch Integrity
     - **Property 7: Catch Integrity — Inventory Growth and Score Consistency**
     - **Validates: Requirements 4.3, 4.4**
     - Use fast-check to generate random sequences of caught fish (from the catalog).
     - After each catch, assert `inventory.length` increased by exactly 1 and
       `score === inventory.reduce((s, e) => s + e.fishType.points, 0)`.
 
-  - [ ] 4.6 Write property test — Property 13: Restart Produces Clean State
+  - [-] 4.6 Write property test — Property 13: Restart Produces Clean State
     - **Property 13: Restart Produces Clean State**
     - **Validates: Requirements 8.3**
     - Use fast-check to generate arbitrary game states (various scores, inventories, timers).
     - Assert that after `restartSession()`, `score === 0`, `inventory.length === 0`,
       `timerRemaining === 60`, and `gameState === 'idle'`.
 
-  - [ ] 4.7 Write property test — Property 14: High Score Is Non-Decreasing Maximum
+  - [-] 4.7 Write property test — Property 14: High Score Is Non-Decreasing Maximum
     - **Property 14: High Score Is Non-Decreasing Maximum**
     - **Validates: Requirements 8.5**
     - Use fast-check to generate arrays of non-negative session scores.
     - Simulate calling `endSession()` for each score; assert `highScore` always equals
       `Math.max(...scores)` and never decreases between sessions.
 
-  - [ ] 4.8 Write property test — Property 11: Timer Expiry Ends Session
+  - [-] 4.8 Write property test — Property 11: Timer Expiry Ends Session
     - **Property 11: Timer Expiry Ends Session**
     - **Validates: Requirements 7.3, 7.5**
     - Simulate timer reaching 0 while `biteTimeoutId` is set; assert `gameState` transitions
@@ -195,7 +195,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - All `<script type="module">` tags at end of `<body>`.
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-  - [ ] 9.2 Write property test — Property 10: Inventory Row Renders Rarity and Points
+  - [x] 9.2 Write property test — Property 10: Inventory Row Renders Rarity and Points
     - **Property 10: Inventory Row Renders Rarity and Points**
     - **Validates: Requirements 5.4**
     - Use fast-check to generate arbitrary `FishEntry` objects (valid fishType + caughtAt).
@@ -242,7 +242,7 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
       Duration must be randomly chosen between 600ms and 1000ms per the design spec.
     - _Requirements: 2.2, 2.3, 3.2, 4.2, 10.1, 10.2, 10.4, 10.5_
 
-  - [ ] 10.3 Write property test — Property 16: Animation Durations Are Within Specified Ranges
+  - [~] 10.3 Write property test — Property 16: Animation Durations Are Within Specified Ranges
     - **Property 16: Animation Durations Are Within Specified Ranges**
     - **Validates: Requirements 10.1, 10.4**
     - Use fast-check to call `animateCast()` (or expose its duration-selection logic) many times;
@@ -268,35 +268,35 @@ wiring), and finally property-based tests with fast-check loaded via CDN.
     - Show start screen via `Renderer.showStartScreen()`.
     - _Requirements: 1.4, 2.1, 2.2, 3.2, 4.1, 4.2, 9.5_
 
-  - [ ] 11.2 Write property test — Property 2: Cast-to-Waiting Transition
+  - [~] 11.2 Write property test — Property 2: Cast-to-Waiting Transition
     - **Property 2: Cast-to-Waiting Transition**
     - **Validates: Requirements 2.4**
     - Stub `Renderer.animateCast()` to resolve immediately.
     - Use fast-check to confirm that for any `casting` state, completing the animation always
       results in `waiting` and never any other state.
 
-  - [ ] 11.3 Write property test — Property 4: Bite Triggers Biting State
+  - [~] 11.3 Write property test — Property 4: Bite Triggers Biting State
     - **Property 4: Bite Triggers Biting State**
     - **Validates: Requirements 3.4**
     - Stub `scheduleBite()` to fire immediately; use fast-check to confirm `waiting` → `biting`
       for any valid session.
 
-  - [ ] 11.4 Write property test — Property 5: Missed Bite Returns to Idle
+  - [~] 11.4 Write property test — Property 5: Missed Bite Returns to Idle
     - **Property 5: Missed Bite Returns to Idle**
     - **Validates: Requirements 3.6**
     - Stub reaction-window timer to expire immediately; use fast-check to confirm `biting` → `idle`.
 
-  - [ ] 11.5 Write property test — Property 6: Reel Action Triggers Reeling State
+  - [~] 11.5 Write property test — Property 6: Reel Action Triggers Reeling State
     - **Property 6: Reel Action Triggers Reeling State**
     - **Validates: Requirements 4.1**
     - Use fast-check to call `reel()` in `biting` state; assert transition to `reeling`.
 
-  - [ ] 11.6 Write property test — Property 8: Reel Completion Returns to Idle
+  - [~] 11.6 Write property test — Property 8: Reel Completion Returns to Idle
     - **Property 8: Reel Completion Returns to Idle**
     - **Validates: Requirements 4.7**
     - Stub `Renderer.animateReel()` to resolve immediately; assert `reeling` → `idle`.
 
-  - [ ] 11.7 Write property test — Property 12: Timer Warning Threshold
+  - [~] 11.7 Write property test — Property 12: Timer Warning Threshold
     - **Property 12: Timer Warning Threshold**
     - **Validates: Requirements 7.4**
     - Use fast-check to generate arbitrary `remaining` values (0–60).

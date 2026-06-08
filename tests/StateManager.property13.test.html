@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Test — Property 13: Restart Produces Clean State</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 780px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    h1 { color: #38bdf8; margin-bottom: 4px; }
+    .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 28px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .badge-info  { background: #1e40af; color: #bfdbfe; }
+    .badge-pass  { background: #14532d; color: #86efac; }
+    .badge-fail  { background: #7f1d1d; color: #fca5a5; }
+    .badge-run   { background: #78350f; color: #fde68a; }
+
+    .card {
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      background: #1e293b;
+    }
+    .card h2 { margin: 0 0 6px; font-size: 1rem; color: #f1f5f9; }
+    .card .meta { font-size: 0.8rem; color: #64748b; margin-bottom: 12px; }
+    .result-line {
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .result-pass { background: #052e16; color: #86efac; border-left: 3px solid #22c55e; }
+    .result-fail { background: #450a0a; color: #fca5a5; border-left: 3px solid #ef4444; }
+    .result-info { background: #172554; color: #93c5fd; border-left: 3px solid #3b82f6; }
+
+    #summary {
+      font-size: 1.05rem;
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 28px;
+      font-weight: 600;
+    }
+    #summary.pending { background: #1c1917; color: #d6d3d1; border: 1px solid #44403c; }
+    #summary.running { background: #1c1400; color: #fde68a; border: 1px solid #78350f; }
+    #summary.all-pass { background: #052e16; color: #86efac; border: 1px solid #166534; }
+    #summary.has-fail { background: #450a0a; color: #fca5a5; border: 1px solid #991b1b; }
+
+    pre { margin: 0; }
+    button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      background: #0ea5e9;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #38bdf8; }
+    button:disabled { background: #334155; color: #64748b; cursor: default; }
+  </style>
+</head>
+<body>
+  <h1>🎣 Property Test</h1>
+  <p class="subtitle">
+    <span class="badge badge-info">Property 13</span>
+    Restart Produces Clean State &nbsp;·&nbsp;
+    <span class="badge badge-info">Validates: Requirements 8.3</span>
+  </p>
+
+  <div id="summary" class="pending">⏳ Ready — click "Run Tests" to start.</div>
+
+  <button id="btn-run" onclick="runTests()">▶ Run Tests</button>
+
+  <div id="results" style="margin-top:24px;"></div>
+
+  <!-- fast-check UMD bundle — exposes global `fc` -->
+  <script src="https://cdn.jsdelivr.net/npm/fast-check/lib/bundle/fast-check.min.js"></script>
+
+  <script type="module">
+    // ── Import the modules under test ────────────────────────────────────────
+    import State_Manager from '../js/State_Manager.js';
+    import { FISH_CATALOG } from '../js/FishCatalog.js';
+
+    // Expose to the inline onclick handler (module scope is private)
+    window.__smTest = { State_Manager, FISH_CATALOG };
+  </script>
+
+  <script>
+    // ── Tiny test-result renderer ─────────────────────────────────────────────
+    const resultsEl = document.getElementById('results');
+    const summaryEl = document.getElementById('summary');
+    const btnRun    = document.getElementById('btn-run');
+
+    let passCount = 0;
+    let failCount = 0;
+
+    function renderCard(title, meta, lines) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML =
+        `<h2>${title}</h2><div class="meta">${meta}</div>` +
+        lines.map(l => `<div class="result-line result-${l.type}"><pre>${l.text}</pre></div>`).join('');
+      resultsEl.appendChild(card);
+    }
+
+    function updateSummary() {
+      if (failCount === 0) {
+        summaryEl.className = 'all-pass';
+        summaryEl.textContent =
+          `✅ All ${passCount} assertion group(s) passed — Property 13 holds for 100 runs each.`;
+      } else {
+        summaryEl.className = 'has-fail';
+        summaryEl.textContent =
+          `❌ ${failCount} assertion group(s) failed, ${passCount} passed.`;
+      }
+    }
+
+    // ── Main test runner (called by the button) ──────────────────────────────
+    async function runTests() {
+      // Wait until the ES module has loaded and exposed __smTest
+      if (!window.__smTest) {
+        await new Promise(r => setTimeout(r, 300));
+        if (!window.__smTest) {
+          summaryEl.className = 'has-fail';
+          summaryEl.textContent =
+            '❌ Module load failed — check the browser console for import errors.';
+          return;
+        }
+      }
+
+      btnRun.disabled = true;
+      summaryEl.className = 'running';
+      summaryEl.textContent = '⏳ Running property tests…';
+      resultsEl.innerHTML = '';
+      passCount = 0;
+      failCount = 0;
+
+      const { State_Manager, FISH_CATALOG } = window.__smTest;
+
+      // ── Helper: run one fc.assert and capture the result ──────────────────
+      function runProperty(title, meta, property, opts = {}) {
+        try {
+          fc.assert(property, { numRuns: 100, ...opts });
+          passCount++;
+          renderCard(title, meta, [
+            { type: 'pass', text: `✓ PASSED — 100 runs, no counterexample found.` },
+          ]);
+        } catch (err) {
+          failCount++;
+          renderCard(title, meta, [
+            { type: 'fail', text: `✗ FAILED\n${err.message}` },
+          ]);
+        }
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 13a — After restartSession(), score is reset to 0,
+      //                inventory is emptied, and timer is reset to 60,
+      //                regardless of prior score and inventory size.
+      //
+      // Generates:
+      //   - arbitrary score in [0, 9999]
+      //   - arbitrary inventory size in [0, 20]
+      //
+      // After manually setting sm.score and pushing fake fish into
+      // sm.inventory, calls sm.restartSession() and asserts all four
+      // fields are reset to their clean-state values.
+      // Calls sm._clearAllTimers() to prevent dangling setIntervals.
+      //
+      // Validates: Requirements 8.3
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 13a — restartSession() resets score=0, inventory=[], timer=60, gameState="idle" for any prior score/inventory',
+        'Validates: Requirements 8.3 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; Inputs: score ∈ [0,9999], inventorySize ∈ [0,20]',
+        fc.property(
+          fc.integer({ min: 0, max: 9999 }),   // arbitrary prior score
+          fc.integer({ min: 0, max: 20 }),      // arbitrary prior inventory size
+          (priorScore, inventorySize) => {
+            const sm = new State_Manager();
+
+            // Set up arbitrary prior state
+            sm.score = priorScore;
+            for (let i = 0; i < inventorySize; i++) {
+              // Push a minimal fake fish entry matching the inventory schema
+              sm.inventory.push({
+                fishType: FISH_CATALOG[i % FISH_CATALOG.length],
+                caughtAt: Date.now(),
+              });
+            }
+
+            // Act
+            sm.restartSession();
+
+            // Clean up the dangling setInterval started by restartSession()
+            sm._clearAllTimers();
+
+            // Assert clean state
+            if (sm.score !== 0) {
+              throw new Error(
+                `Expected score to be 0 after restartSession(), but got ${sm.score} ` +
+                `(priorScore=${priorScore}, inventorySize=${inventorySize})`
+              );
+            }
+            if (sm.inventory.length !== 0) {
+              throw new Error(
+                `Expected inventory.length to be 0 after restartSession(), but got ${sm.inventory.length} ` +
+                `(priorScore=${priorScore}, inventorySize=${inventorySize})`
+              );
+            }
+            if (sm.timer !== 60) {
+              throw new Error(
+                `Expected timer to be 60 after restartSession(), but got ${sm.timer} ` +
+                `(priorScore=${priorScore}, inventorySize=${inventorySize})`
+              );
+            }
+            if (sm.gameState !== 'idle') {
+              throw new Error(
+                `Expected gameState to be "idle" after restartSession(), but got "${sm.gameState}" ` +
+                `(priorScore=${priorScore}, inventorySize=${inventorySize})`
+              );
+            }
+          }
+        )
+      );
+
+      // ════════════════════════════════════════════════════════════════════
+      // Property 13b — After restartSession(), gameState is always 'idle',
+      //                regardless of what state the session was in before.
+      //
+      // Generates:
+      //   - arbitrary prior gameState from the full set of valid states
+      //
+      // Manually sets sm.gameState to the generated state, calls
+      // sm.restartSession(), and asserts gameState === 'idle'.
+      // Calls sm._clearAllTimers() to prevent dangling setIntervals.
+      //
+      // Validates: Requirements 8.3
+      // ════════════════════════════════════════════════════════════════════
+      runProperty(
+        'Property 13b — restartSession() always transitions gameState to "idle" from any prior state',
+        'Validates: Requirements 8.3 &nbsp;|&nbsp; Runs: 100 &nbsp;|&nbsp; Inputs: priorState ∈ {idle, casting, waiting, biting, reeling, result}',
+        fc.property(
+          fc.constantFrom('idle', 'casting', 'waiting', 'biting', 'reeling', 'result'),
+          (priorState) => {
+            const sm = new State_Manager();
+
+            // Force the instance into the arbitrary prior state
+            sm.gameState = priorState;
+
+            // Act
+            sm.restartSession();
+
+            // Clean up the dangling setInterval started by restartSession()
+            sm._clearAllTimers();
+
+            // Assert
+            if (sm.gameState !== 'idle') {
+              throw new Error(
+                `Expected gameState to be "idle" after restartSession(), ` +
+                `but got "${sm.gameState}" (priorState="${priorState}")`
+              );
+            }
+          }
+        )
+      );
+
+      // ── Final summary ────────────────────────────────────────────────────
+      updateSummary();
+      btnRun.disabled = false;
+    }
+
+    // Expose runTests so the onclick attribute can reach it from the global scope
+    window.runTests = runTests;
+  </script>
+</body>
+</html>
