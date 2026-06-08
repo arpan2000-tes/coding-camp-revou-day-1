@@ -1,0 +1,142 @@
+/* ============================================================
+   animations.css — Custom CSS keyframe animations
+   Fishing Interactive Website
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. @keyframes ripple
+      Water ripple circles: scale up from center + opacity fade
+   ------------------------------------------------------------ */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------
+   2. @keyframes bobber-shake
+      Bobber bite indicator: alternating rotation ±15deg
+   ------------------------------------------------------------ */
+@keyframes bobber-shake {
+  0%   { transform: rotate(0deg); }
+  15%  { transform: rotate(15deg); }
+  30%  { transform: rotate(-15deg); }
+  45%  { transform: rotate(15deg); }
+  60%  { transform: rotate(-15deg); }
+  75%  { transform: rotate(15deg); }
+  90%  { transform: rotate(-15deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ------------------------------------------------------------
+   3. @keyframes splash
+      Water entry effect: scale up + opacity fade out
+   ------------------------------------------------------------ */
+@keyframes splash {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------
+   4. @keyframes float-up-fade
+      Catch/miss notifications: translateY upward + opacity 1→0
+   ------------------------------------------------------------ */
+@keyframes float-up-fade {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-80px);
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------
+   5. @keyframes timer-pulse
+      Urgent timer warning: scale 1 → 1.2 → 1 with red color shift
+   ------------------------------------------------------------ */
+@keyframes timer-pulse {
+  0% {
+    transform: scale(1);
+    color: #ef4444; /* red-500 */
+  }
+  50% {
+    transform: scale(1.2);
+    color: #b91c1c; /* red-700 */
+  }
+  100% {
+    transform: scale(1);
+    color: #ef4444; /* red-500 */
+  }
+}
+
+/* ------------------------------------------------------------
+   6. @keyframes cloud-drift
+      Background clouds/birds: translateX from off-screen right
+      to off-screen left across the full viewport width
+   ------------------------------------------------------------ */
+@keyframes cloud-drift {
+  0% {
+    transform: translateX(110vw);
+  }
+  100% {
+    transform: translateX(-110vw);
+  }
+}
+
+/* ============================================================
+   Utility Classes
+   ============================================================ */
+
+/* Ripple — 2s, infinite, ease-out spread */
+.animate-ripple {
+  animation: ripple 2s ease-out infinite;
+}
+
+/* Bobber shake — 500ms, 3 iterations, ease-in-out */
+.animate-bobber-shake {
+  animation: bobber-shake 500ms ease-in-out 3;
+}
+
+/* Splash — 400ms, single play, forwards fill */
+.animate-splash {
+  animation: splash 400ms ease-out 1 forwards;
+}
+
+/* Float-up-fade — 2s, single play, forwards fill */
+.animate-float-up-fade {
+  animation: float-up-fade 2s ease-out 1 forwards;
+}
+
+/* Timer pulse — 1s, infinite, ease-in-out; force red base color */
+.animate-timer-pulse {
+  animation: timer-pulse 1s ease-in-out infinite;
+  color: #ef4444; /* red-500 — initial value before first cycle */
+}
+
+/* Cloud drift — 15s, infinite, linear (constant speed) */
+.animate-cloud-drift {
+  animation: cloud-drift 15s linear infinite;
+}
